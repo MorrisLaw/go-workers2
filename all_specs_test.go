@@ -1,26 +1,70 @@
 package workers
 
-func setupTestConfig() {
-	Configure(Options{
-		ServerAddr: "localhost:6379",
-		ProcessID:  "1",
-		Database:   15,
-		PoolSize:   1,
-	})
-
-	rc := Config.Client
-	rc.FlushDB().Result()
+func setupTestConfig() (*config, error) {
+	return setupTestConfigWithNamespace("")
 }
 
-func setupTestConfigWithNamespace(namespace string) {
-	Configure(Options{
+func setupTestConfigWithNamespace(namespace string) (*config, error) {
+	cfg, err := configFromOptions(testOptionsWithNamespace(namespace))
+	if cfg != nil {
+		cfg.Client.FlushDB().Result()
+	}
+	return cfg, err
+}
+
+func testOptionsWithNamespace(namespace string) Options {
+	return Options{
 		ServerAddr: "localhost:6379",
 		ProcessID:  "1",
 		Database:   15,
 		PoolSize:   1,
 		Namespace:  namespace,
-	})
+	}
+}
 
-	rc := Config.Client
-	rc.FlushDB().Result()
+type callCounter struct {
+	count     int
+	syncCh    chan *Msg
+	ackSyncCh chan bool
+}
+
+func newCallCounter() *callCounter {
+	return &callCounter{
+		syncCh:    make(chan *Msg),
+		ackSyncCh: make(chan bool),
+	}
+}
+
+func (j *callCounter) getOpt(m *Msg, opt string) bool {
+	if m == nil {
+		return false
+	}
+	return m.Args().GetIndex(0).Get(opt).MustBool()
+}
+
+func (j *callCounter) F(m *Msg) error {
+	j.count++
+	if m != nil {
+		if j.getOpt(m, "sync") {
+			j.syncCh <- m
+			<-j.ackSyncCh
+		}
+		m.ack = !j.getOpt(m, "noack")
+	}
+	return nil
+}
+
+func (j *callCounter) syncMsg() *Msg {
+	m, _ := NewMsg(`{"args": [{"sync": true}]}`)
+	return m
+}
+
+func (j *callCounter) msg() *Msg {
+	m, _ := NewMsg(`{"args": []}`)
+	return m
+}
+
+func (j *callCounter) noAckMsg() *Msg {
+	m, _ := NewMsg(`{"args": [{"noack": true}]}`)
+	return m
 }

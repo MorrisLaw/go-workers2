@@ -13,7 +13,6 @@ type config struct {
 	Namespace    string
 	PollInterval int
 	Client       *redis.Client
-	Fetch        func(queue string) Fetcher
 }
 
 type Options struct {
@@ -30,11 +29,9 @@ type Options struct {
 	RedisMasterName string
 }
 
-var Config *config
-
-func Configure(options Options) error {
+func configFromOptions(options Options) (*config, error) {
 	if options.ProcessID == "" {
-		return errors.New("Configure requires a ProcessID, which uniquely identifies this instance")
+		return nil, errors.New("Options requires a ProcessID, which uniquely identifies this instance")
 	}
 
 	if options.Namespace != "" {
@@ -60,7 +57,7 @@ func Configure(options Options) error {
 		})
 	} else if options.SentinelAddrs != "" {
 		if options.RedisMasterName == "" {
-			return errors.New("Sentinel configuration requires a master name")
+			return nil, errors.New("Sentinel configuration requires a master name")
 		}
 
 		rc = redis.NewFailoverClient(&redis.FailoverOptions{
@@ -72,17 +69,12 @@ func Configure(options Options) error {
 			MasterName:    options.RedisMasterName,
 		})
 	} else {
-		return errors.New("Configure requires either the Server or Sentinels option")
+		return nil, errors.New("Options requires either the Server or Sentinels option")
 	}
-
-	Config = &config{
+	return &config{
 		processId:    options.ProcessID,
 		Namespace:    options.Namespace,
 		PollInterval: options.PollInterval,
 		Client:       rc,
-		Fetch: func(queue string) Fetcher {
-			return NewFetch(queue, make(chan *Msg), make(chan bool))
-		},
-	}
-	return nil
+	}, nil
 }

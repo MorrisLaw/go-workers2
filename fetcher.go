@@ -12,31 +12,32 @@ type Fetcher interface {
 	Fetch()
 	Acknowledge(*Msg)
 	Ready() chan bool
-	FinishedWork() chan bool
 	Messages() chan *Msg
 	Close()
 	Closed() bool
 }
 
 type fetch struct {
-	queue        string
-	ready        chan bool
-	finishedwork chan bool
-	messages     chan *Msg
-	stop         chan bool
-	exit         chan bool
-	closed       chan bool
+	client    *redis.Client
+	processID string
+	queue     string
+	ready     chan bool
+	messages  chan *Msg
+	stop      chan bool
+	exit      chan bool
+	closed    chan bool
 }
 
-func NewFetch(queue string, messages chan *Msg, ready chan bool) Fetcher {
+func NewFetch(queue string, cfg config) Fetcher {
 	return &fetch{
-		queue,
-		ready,
-		make(chan bool),
-		messages,
-		make(chan bool),
-		make(chan bool),
-		make(chan bool),
+		client:    cfg.Client,
+		processID: cfg.processId,
+		queue:     cfg.Namespace + "queue:" + queue,
+		ready:     make(chan bool),
+		messages:  make(chan *Msg),
+		stop:      make(chan bool),
+		exit:      make(chan bool),
+		closed:    make(chan bool),
 	}
 }
 
@@ -80,14 +81,12 @@ func (f *fetch) Fetch() {
 }
 
 func (f *fetch) tryFetchMessage() {
-	rc := Config.Client
-
-	message, err := rc.BRPopLPush(f.queue, f.inprogressQueue(), 1*time.Second).Result()
+	message, err := f.client.BRPopLPush(f.queue, f.inprogressQueue(), 1*time.Second).Result()
 
 	if err != nil {
 		// If redis returns null, the queue is empty. Just ignore the error.
 		if err == redis.Nil {
-			Logger.Println("ERR: ", err)
+			Logger.Println("ERR: ", f.queue, err)
 			time.Sleep(1 * time.Second)
 		}
 	} else {
@@ -107,9 +106,7 @@ func (f *fetch) sendMessage(message string) {
 }
 
 func (f *fetch) Acknowledge(message *Msg) {
-	rc := Config.Client
-
-	rc.LRem(f.inprogressQueue(), -1, message.OriginalJson()).Result()
+	f.client.LRem(f.inprogressQueue(), -1, message.OriginalJson()).Result()
 }
 
 func (f *fetch) Messages() chan *Msg {
@@ -118,10 +115,6 @@ func (f *fetch) Messages() chan *Msg {
 
 func (f *fetch) Ready() chan bool {
 	return f.ready
-}
-
-func (f *fetch) FinishedWork() chan bool {
-	return f.finishedwork
 }
 
 func (f *fetch) Close() {
@@ -139,9 +132,7 @@ func (f *fetch) Closed() bool {
 }
 
 func (f *fetch) inprogressMessages() []string {
-	rc := Config.Client
-
-	messages, err := rc.LRange(f.inprogressQueue(), 0, -1).Result()
+	messages, err := f.client.LRange(f.inprogressQueue(), 0, -1).Result()
 	if err != nil {
 		Logger.Println("ERR: ", err)
 	}
@@ -150,5 +141,5 @@ func (f *fetch) inprogressMessages() []string {
 }
 
 func (f *fetch) inprogressQueue() string {
-	return fmt.Sprint(f.queue, ":", Config.processId, ":inprogress")
+	return fmt.Sprint(f.queue, ":", f.processID, ":inprogress")
 }
