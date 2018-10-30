@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestEnqueue(t *testing.T) {
+func TestProducer_Enqueue(t *testing.T) {
 	namespace := "prod"
 	cfg, err := setupTestConfigWithNamespace(namespace)
 	assert.NoError(t, err)
@@ -80,7 +80,7 @@ func TestEnqueue(t *testing.T) {
 	assert.Equal(t, 13, retryCount)
 }
 
-func TestEnqueueIn(t *testing.T) {
+func TestProducer_EnqueueIn(t *testing.T) {
 	namespace := "prod"
 	cfg, err := setupTestConfigWithNamespace(namespace)
 	assert.NoError(t, err)
