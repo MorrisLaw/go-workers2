@@ -29,11 +29,11 @@ func (w *taskRunner) work(messages <-chan *Msg, done chan<- *Msg, ready chan<- b
 
 			w.process(msg)
 
-			done <- msg
-
 			w.lock.Lock()
 			w.currentMsg = nil
 			w.lock.Unlock()
+
+			done <- msg
 
 		case ready <- true:
 			// Signaled to fetcher that we're

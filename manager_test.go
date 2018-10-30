@@ -151,8 +151,7 @@ func TestManager_Run(t *testing.T) {
 	opts.PollInterval = 1
 	mgr, err := newTestManager(opts)
 	assert.NoError(t, err)
-	prod, err := NewProducer(opts)
-	assert.NoError(t, err)
+	prod := mgr.Producer()
 
 	q1cc := newCallCounter()
 	q2cc := newCallCounter()
