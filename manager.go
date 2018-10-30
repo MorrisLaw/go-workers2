@@ -84,7 +84,7 @@ func (m *Manager) Run() {
 	for i := range m.workers {
 		w := m.workers[i]
 		go func() {
-			w.start(newFetch(w.queue, m.opts))
+			w.start(newSimpleFetcher(w.queue, m.opts))
 			wg.Done()
 		}()
 	}

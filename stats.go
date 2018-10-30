@@ -39,7 +39,7 @@ func (ss *statsServer) Stats(w http.ResponseWriter, req *http.Request) {
 	for _, m := range ss.managers {
 		s, err := statsForManager(m)
 		if err != nil {
-			Logger.Println("couldn't retrieve stats:", err)
+			Logger.Println("couldn't retrieve stats for manager:", err)
 		} else {
 			allStats = append(allStats, s)
 		}
@@ -51,6 +51,7 @@ func (ss *statsServer) Stats(w http.ResponseWriter, req *http.Request) {
 }
 
 type stats struct {
+	Name      string                 `json:"manager_name"`
 	Processed int64                  `json:"processed"`
 	Failed    int64                  `json:"failed"`
 	Jobs      map[string][]jobStatus `json:"jobs"`
@@ -67,6 +68,7 @@ func statsForManager(m *Manager) (stats, error) {
 	stats := stats{
 		Jobs:     map[string][]jobStatus{},
 		Enqueued: map[string]int64{},
+		Name:     m.opts.ManagerDisplayName,
 	}
 	pipe := m.opts.client.Pipeline()
 	inProgress := m.inProgressMessages()
@@ -91,7 +93,7 @@ func statsForManager(m *Manager) (stats, error) {
 
 	_, err := pipe.Exec()
 
-	if err != nil {
+	if err != nil && err != redis.Nil {
 		return stats, err
 	}
 	stats.Processed, _ = strconv.ParseInt(pGet.Val(), 10, 64)

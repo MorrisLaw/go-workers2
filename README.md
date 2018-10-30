@@ -29,7 +29,7 @@ func myJob(message *workers.Msg) error {
   return nil
 }
 
-func myMiddleware(queue string, next JobFunc) JobFunc {
+func myMiddleware(queue string, mgr *Manager, next JobFunc) JobFunc {
   return func(message *workers.Msg) (err error) {
     // do something before each message is processed
     err = next()

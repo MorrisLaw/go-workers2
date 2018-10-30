@@ -17,7 +17,7 @@ type Fetcher interface {
 	Closed() bool
 }
 
-type fetch struct {
+type simpleFetcher struct {
 	client    *redis.Client
 	processID string
 	queue     string
@@ -28,8 +28,8 @@ type fetch struct {
 	closed    chan bool
 }
 
-func newFetch(queue string, opts Options) Fetcher {
-	return &fetch{
+func newSimpleFetcher(queue string, opts Options) *simpleFetcher {
+	return &simpleFetcher{
 		client:    opts.client,
 		processID: opts.ProcessID,
 		queue:     opts.Namespace + "queue:" + queue,
@@ -41,11 +41,11 @@ func newFetch(queue string, opts Options) Fetcher {
 	}
 }
 
-func (f *fetch) Queue() string {
+func (f *simpleFetcher) Queue() string {
 	return f.queue
 }
 
-func (f *fetch) processOldMessages() {
+func (f *simpleFetcher) processOldMessages() {
 	messages := f.inprogressMessages()
 
 	for _, message := range messages {
@@ -54,7 +54,7 @@ func (f *fetch) processOldMessages() {
 	}
 }
 
-func (f *fetch) Fetch() {
+func (f *simpleFetcher) Fetch() {
 	f.processOldMessages()
 
 	go func() {
@@ -80,7 +80,7 @@ func (f *fetch) Fetch() {
 	}
 }
 
-func (f *fetch) tryFetchMessage() {
+func (f *simpleFetcher) tryFetchMessage() {
 	message, err := f.client.BRPopLPush(f.queue, f.inprogressQueue(), 1*time.Second).Result()
 
 	if err != nil {
@@ -94,7 +94,7 @@ func (f *fetch) tryFetchMessage() {
 	}
 }
 
-func (f *fetch) sendMessage(message string) {
+func (f *simpleFetcher) sendMessage(message string) {
 	msg, err := NewMsg(message)
 
 	if err != nil {
@@ -105,24 +105,24 @@ func (f *fetch) sendMessage(message string) {
 	f.Messages() <- msg
 }
 
-func (f *fetch) Acknowledge(message *Msg) {
+func (f *simpleFetcher) Acknowledge(message *Msg) {
 	f.client.LRem(f.inprogressQueue(), -1, message.OriginalJson()).Result()
 }
 
-func (f *fetch) Messages() chan *Msg {
+func (f *simpleFetcher) Messages() chan *Msg {
 	return f.messages
 }
 
-func (f *fetch) Ready() chan bool {
+func (f *simpleFetcher) Ready() chan bool {
 	return f.ready
 }
 
-func (f *fetch) Close() {
+func (f *simpleFetcher) Close() {
 	f.stop <- true
 	<-f.exit
 }
 
-func (f *fetch) Closed() bool {
+func (f *simpleFetcher) Closed() bool {
 	select {
 	case <-f.closed:
 		return true
@@ -131,7 +131,7 @@ func (f *fetch) Closed() bool {
 	}
 }
 
-func (f *fetch) inprogressMessages() []string {
+func (f *simpleFetcher) inprogressMessages() []string {
 	messages, err := f.client.LRange(f.inprogressQueue(), 0, -1).Result()
 	if err != nil {
 		Logger.Println("ERR: ", err)
@@ -140,6 +140,6 @@ func (f *fetch) inprogressMessages() []string {
 	return messages
 }
 
-func (f *fetch) inprogressQueue() string {
+func (f *simpleFetcher) inprogressQueue() string {
 	return fmt.Sprint(f.queue, ":", f.processID, ":inprogress")
 }

@@ -21,6 +21,9 @@ type Options struct {
 	SentinelAddrs   string
 	RedisMasterName string
 
+	// Optional display name used when displaying manager stats
+	ManagerDisplayName string
+
 	client *redis.Client
 }
 
