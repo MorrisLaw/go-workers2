@@ -14,9 +14,9 @@ const (
 )
 
 type scheduledWorker struct {
-	config config
-	keys   []string
-	done   chan bool
+	opts Options
+	keys []string
+	done chan bool
 }
 
 func (s *scheduledWorker) run() {
@@ -29,7 +29,7 @@ func (s *scheduledWorker) run() {
 
 		s.poll()
 
-		time.Sleep(time.Duration(s.config.PollInterval) * time.Second)
+		time.Sleep(time.Duration(s.opts.PollInterval) * time.Second)
 	}
 }
 
@@ -41,9 +41,9 @@ func (s *scheduledWorker) poll() {
 	now := nowToSecondsWithNanoPrecision()
 
 	for _, key := range s.keys {
-		key = s.config.Namespace + key
+		key = s.opts.Namespace + key
 		for {
-			messages, _ := s.config.Client.ZRangeByScore(key, redis.ZRangeBy{
+			messages, _ := s.opts.client.ZRangeByScore(key, redis.ZRangeBy{
 				Min:    "-inf",
 				Max:    strconv.FormatFloat(now, 'f', -1, 64),
 				Offset: 0,
@@ -56,20 +56,20 @@ func (s *scheduledWorker) poll() {
 
 			message, _ := NewMsg(messages[0])
 
-			if removed, _ := s.config.Client.ZRem(key, messages[0]).Result(); removed != 0 {
+			if removed, _ := s.opts.client.ZRem(key, messages[0]).Result(); removed != 0 {
 				queue, _ := message.Get("queue").String()
-				queue = strings.TrimPrefix(queue, s.config.Namespace)
+				queue = strings.TrimPrefix(queue, s.opts.Namespace)
 				message.Set("enqueued_at", nowToSecondsWithNanoPrecision())
-				s.config.Client.LPush(s.config.Namespace+"queue:"+queue, message.ToJson()).Result()
+				s.opts.client.LPush(s.opts.Namespace+"queue:"+queue, message.ToJson()).Result()
 			}
 		}
 	}
 }
 
-func newScheduledWorker(cfg config) *scheduledWorker {
+func newScheduledWorker(opts Options) *scheduledWorker {
 	return &scheduledWorker{
-		config: cfg,
-		keys:   []string{retryKey, scheduledJobsKey},
-		done:   make(chan bool),
+		opts: opts,
+		keys: []string{retryKey, scheduledJobsKey},
+		done: make(chan bool),
 	}
 }

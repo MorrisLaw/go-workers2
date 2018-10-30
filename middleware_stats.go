@@ -33,13 +33,13 @@ func StatsMiddleware(queue string, mgr *Manager, next JobFunc) JobFunc {
 }
 
 func incrementStats(mgr *Manager, metric string) {
-	rc := mgr.config.Client
+	rc := mgr.opts.client
 
 	today := time.Now().UTC().Format("2006-01-02")
 
 	pipe := rc.Pipeline()
-	pipe.Incr(mgr.config.Namespace + "stat:" + metric)
-	pipe.Incr(mgr.config.Namespace + "stat:" + metric + ":" + today)
+	pipe.Incr(mgr.opts.Namespace + "stat:" + metric)
+	pipe.Incr(mgr.opts.Namespace + "stat:" + metric + ":" + today)
 
 	if _, err := pipe.Exec(); err != nil {
 		Logger.Println("couldn't save stats:", err)

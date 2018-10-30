@@ -26,7 +26,7 @@ func retryProcessError(queue string, mgr *Manager, message *Msg, err error) erro
 			) * time.Second,
 		)
 
-		rc := mgr.config.Client
+		rc := mgr.opts.client
 		_, err = rc.ZAdd(mgr.RetryQueue(), redis.Z{
 			Score:  nowToSecondsWithNanoPrecision() + waitDuration,
 			Member: message.ToJson(),

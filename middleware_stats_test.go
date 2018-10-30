@@ -11,11 +11,11 @@ import (
 
 func TestProcessedStats(t *testing.T) {
 	namespace := "prod"
-	cfg, err := setupTestConfigWithNamespace(namespace)
+	opts, err := setupTestOptionsWithNamespace(namespace)
 	assert.NoError(t, err)
-	mgr := &Manager{config: *cfg}
+	mgr := &Manager{opts: opts}
 
-	rc := cfg.Client
+	rc := opts.client
 
 	count, _ := rc.Get("prod:stat:processed").Result()
 	countInt, _ := strconv.ParseInt(count, 10, 64)
@@ -43,11 +43,11 @@ func TestProcessedStats(t *testing.T) {
 
 func TestFailedStats(t *testing.T) {
 	namespace := "prod"
-	cfg, err := setupTestConfigWithNamespace(namespace)
+	opts, err := setupTestOptionsWithNamespace(namespace)
 	assert.NoError(t, err)
-	mgr := &Manager{config: *cfg}
+	mgr := &Manager{opts: opts}
 
-	rc := cfg.Client
+	rc := opts.client
 
 	layout := "2006-01-02"
 

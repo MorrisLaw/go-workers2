@@ -68,9 +68,9 @@ func statsForManager(m *Manager) (stats, error) {
 		Jobs:     map[string][]jobStatus{},
 		Enqueued: map[string]int64{},
 	}
-	pipe := m.config.Client.Pipeline()
+	pipe := m.opts.client.Pipeline()
 	inProgress := m.inProgressMessages()
-	ns := m.config.Namespace
+	ns := m.opts.Namespace
 
 	pGet := pipe.Get(ns + "stat:processed")
 	fGet := pipe.Get(ns + "stat:failed")

@@ -6,28 +6,28 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func buildFetch(queue string, cfg *config) Fetcher {
-	fetch := NewFetch(queue, *cfg)
+func buildFetch(queue string, opts Options) Fetcher {
+	fetch := newFetch(queue, opts)
 	go fetch.Fetch()
 	return fetch
 }
 
 func TestFetchConfig(t *testing.T) {
-	cfg, err := setupTestConfig()
+	opts, err := setupTestOptions()
 	assert.NoError(t, err)
-	fetch := buildFetch("fetchQueue1", cfg)
+	fetch := buildFetch("fetchQueue1", opts)
 	assert.Equal(t, "queue:fetchQueue1", fetch.Queue())
 	fetch.Close()
 }
 
 func TestGetMessagesToChannel(t *testing.T) {
-	cfg, err := setupTestConfig()
+	opts, err := setupTestOptions()
 	assert.NoError(t, err)
 
 	message, _ := NewMsg("{\"foo\":\"bar\"}")
-	fetch := buildFetch("fetchQueue2", cfg)
+	fetch := buildFetch("fetchQueue2", opts)
 
-	rc := cfg.Client
+	rc := opts.client
 
 	rc.LPush("queue:fetchQueue2", message.ToJson()).Result()
 
@@ -44,13 +44,13 @@ func TestGetMessagesToChannel(t *testing.T) {
 }
 
 func TestMoveProgressMessageToPrivateQueue(t *testing.T) {
-	cfg, err := setupTestConfig()
+	opts, err := setupTestOptions()
 	assert.NoError(t, err)
 	message, _ := NewMsg("{\"foo\":\"bar\"}")
 
-	fetch := buildFetch("fetchQueue3", cfg)
+	fetch := buildFetch("fetchQueue3", opts)
 
-	rc := cfg.Client
+	rc := opts.client
 
 	rc.LPush("queue:fetchQueue3", message.ToJson())
 
@@ -69,13 +69,13 @@ func TestMoveProgressMessageToPrivateQueue(t *testing.T) {
 }
 
 func TestRemoveProgressMessageWhenAcked(t *testing.T) {
-	cfg, err := setupTestConfig()
+	opts, err := setupTestOptions()
 	assert.NoError(t, err)
 	message, _ := NewMsg("{\"foo\":\"bar\"}")
 
-	fetch := buildFetch("fetchQueue4", cfg)
+	fetch := buildFetch("fetchQueue4", opts)
 
-	rc := cfg.Client
+	rc := opts.client
 
 	rc.LPush("queue:fetchQueue4", message.ToJson()).Result()
 
@@ -92,7 +92,7 @@ func TestRemoveProgressMessageWhenAcked(t *testing.T) {
 }
 
 func TestRemoveProgressMessageDifferentSerialization(t *testing.T) {
-	cfg, err := setupTestConfig()
+	opts, err := setupTestOptions()
 	assert.NoError(t, err)
 
 	json := "{\"foo\":\"bar\",\"args\":[]}"
@@ -100,9 +100,9 @@ func TestRemoveProgressMessageDifferentSerialization(t *testing.T) {
 
 	assert.NotEqual(t, message.ToJson(), json)
 
-	fetch := buildFetch("fetchQueue5", cfg)
+	fetch := buildFetch("fetchQueue5", opts)
 
-	rc := cfg.Client
+	rc := opts.client
 
 	rc.LPush("queue:fetchQueue5", json).Result()
 
@@ -119,20 +119,20 @@ func TestRemoveProgressMessageDifferentSerialization(t *testing.T) {
 }
 
 func TestRetryInprogressMessages(t *testing.T) {
-	cfg, err := setupTestConfig()
+	opts, err := setupTestOptions()
 	assert.NoError(t, err)
 
 	message, _ := NewMsg("{\"foo\":\"bar\"}")
 	message2, _ := NewMsg("{\"foo\":\"bar2\"}")
 	message3, _ := NewMsg("{\"foo\":\"bar3\"}")
 
-	rc := cfg.Client
+	rc := opts.client
 
 	rc.LPush("queue:fetchQueue6:1:inprogress", message.ToJson()).Result()
 	rc.LPush("queue:fetchQueue6:1:inprogress", message2.ToJson()).Result()
 	rc.LPush("queue:fetchQueue6", message3.ToJson()).Result()
 
-	fetch := buildFetch("fetchQueue6", cfg)
+	fetch := buildFetch("fetchQueue6", opts)
 
 	fetch.Ready() <- true
 	assert.Equal(t, message2, <-fetch.Messages())

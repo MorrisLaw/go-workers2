@@ -9,7 +9,7 @@ import (
 
 type Manager struct {
 	uuid     string
-	config   config
+	opts     Options
 	schedule *scheduledWorker
 	workers  []*worker
 	lock     sync.Mutex
@@ -21,13 +21,13 @@ type Manager struct {
 }
 
 func NewManager(options Options) (*Manager, error) {
-	cfg, err := configFromOptions(options)
+	options, err := processOptions(options)
 	if err != nil {
 		return nil, err
 	}
 	return &Manager{
-		uuid:   uuid.New(),
-		config: *cfg,
+		uuid: uuid.New(),
+		opts: options,
 	}, nil
 }
 
@@ -35,7 +35,7 @@ func (m *Manager) AddWorker(queue string, concurrency int, job JobFunc, mids ...
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	middlewareQueueName := m.config.Namespace + queue
+	middlewareQueueName := m.opts.Namespace + queue
 	if len(mids) == 0 {
 		job = DefaultMiddlewares().build(middlewareQueueName, m, job)
 	} else {
@@ -84,11 +84,11 @@ func (m *Manager) Run() {
 	for i := range m.workers {
 		w := m.workers[i]
 		go func() {
-			w.start(NewFetch(w.queue, m.config))
+			w.start(newFetch(w.queue, m.opts))
 			wg.Done()
 		}()
 	}
-	m.schedule = newScheduledWorker(m.config)
+	m.schedule = newScheduledWorker(m.opts)
 
 	wg.Add(1)
 	go func() {
@@ -133,9 +133,9 @@ func (m *Manager) inProgressMessages() map[string][]*Msg {
 }
 
 func (m *Manager) RetryQueue() string {
-	return m.config.Namespace + retryKey
+	return m.opts.Namespace + retryKey
 }
 
 func (m *Manager) Producer() *Producer {
-	return &Producer{config: m.config}
+	return &Producer{opts: m.opts}
 }

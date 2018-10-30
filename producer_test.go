@@ -9,10 +9,10 @@ import (
 
 func TestProducer_Enqueue(t *testing.T) {
 	namespace := "prod"
-	cfg, err := setupTestConfigWithNamespace(namespace)
+	opts, err := setupTestOptionsWithNamespace(namespace)
 	assert.NoError(t, err)
-	rc := cfg.Client
-	p := &Producer{config: *cfg}
+	rc := opts.client
+	p := &Producer{opts: opts}
 
 	//makes the queue available
 	p.Enqueue("enqueue1", "Add", []int{1, 2})
@@ -82,10 +82,10 @@ func TestProducer_Enqueue(t *testing.T) {
 
 func TestProducer_EnqueueIn(t *testing.T) {
 	namespace := "prod"
-	cfg, err := setupTestConfigWithNamespace(namespace)
+	opts, err := setupTestOptionsWithNamespace(namespace)
 	assert.NoError(t, err)
-	rc := cfg.Client
-	p := &Producer{config: *cfg}
+	rc := opts.client
+	p := &Producer{opts: opts}
 
 	scheduleQueue := namespace + ":" + scheduledJobsKey
 
@@ -116,10 +116,10 @@ func TestProducer_EnqueueIn(t *testing.T) {
 
 func TestMultipleEnqueueOrder(t *testing.T) {
 	namespace := "prod"
-	cfg, err := setupTestConfigWithNamespace(namespace)
+	opts, err := setupTestOptionsWithNamespace(namespace)
 	assert.NoError(t, err)
-	rc := cfg.Client
-	p := &Producer{config: *cfg}
+	rc := opts.client
+	p := &Producer{opts: opts}
 
 	var msg1, _ = NewMsg("{\"key\":\"1\"}")
 	_, err = p.Enqueue("testq1", "Compare", msg1.ToJson())

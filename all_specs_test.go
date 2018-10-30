@@ -1,15 +1,15 @@
 package workers
 
-func setupTestConfig() (*config, error) {
-	return setupTestConfigWithNamespace("")
+func setupTestOptions() (Options, error) {
+	return setupTestOptionsWithNamespace("")
 }
 
-func setupTestConfigWithNamespace(namespace string) (*config, error) {
-	cfg, err := configFromOptions(testOptionsWithNamespace(namespace))
-	if cfg != nil {
-		cfg.Client.FlushDB().Result()
+func setupTestOptionsWithNamespace(namespace string) (Options, error) {
+	opts, err := processOptions(testOptionsWithNamespace(namespace))
+	if opts.client != nil {
+		opts.client.FlushDB().Result()
 	}
-	return cfg, err
+	return opts, err
 }
 
 func testOptionsWithNamespace(namespace string) Options {

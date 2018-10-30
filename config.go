@@ -8,13 +8,6 @@ import (
 	"github.com/go-redis/redis"
 )
 
-type config struct {
-	processId    string
-	Namespace    string
-	PollInterval int
-	Client       *redis.Client
-}
-
 type Options struct {
 	ProcessID    string
 	Namespace    string
@@ -27,11 +20,13 @@ type Options struct {
 	ServerAddr      string
 	SentinelAddrs   string
 	RedisMasterName string
+
+	client *redis.Client
 }
 
-func configFromOptions(options Options) (*config, error) {
+func processOptions(options Options) (Options, error) {
 	if options.ProcessID == "" {
-		return nil, errors.New("Options requires a ProcessID, which uniquely identifies this instance")
+		return Options{}, errors.New("Options requires a ProcessID, which uniquely identifies this instance")
 	}
 
 	if options.Namespace != "" {
@@ -46,9 +41,8 @@ func configFromOptions(options Options) (*config, error) {
 
 	redisIdleTimeout := 240 * time.Second
 
-	var rc *redis.Client
 	if options.ServerAddr != "" {
-		rc = redis.NewClient(&redis.Options{
+		options.client = redis.NewClient(&redis.Options{
 			IdleTimeout: redisIdleTimeout,
 			Password:    options.Password,
 			DB:          options.Database,
@@ -57,10 +51,10 @@ func configFromOptions(options Options) (*config, error) {
 		})
 	} else if options.SentinelAddrs != "" {
 		if options.RedisMasterName == "" {
-			return nil, errors.New("Sentinel configuration requires a master name")
+			return Options{}, errors.New("Sentinel configuration requires a master name")
 		}
 
-		rc = redis.NewFailoverClient(&redis.FailoverOptions{
+		options.client = redis.NewFailoverClient(&redis.FailoverOptions{
 			IdleTimeout:   redisIdleTimeout,
 			Password:      options.Password,
 			DB:            options.Database,
@@ -69,12 +63,7 @@ func configFromOptions(options Options) (*config, error) {
 			MasterName:    options.RedisMasterName,
 		})
 	} else {
-		return nil, errors.New("Options requires either the Server or Sentinels option")
+		return Options{}, errors.New("Options requires either the Server or Sentinels option")
 	}
-	return &config{
-		processId:    options.ProcessID,
-		Namespace:    options.Namespace,
-		PollInterval: options.PollInterval,
-		Client:       rc,
-	}, nil
+	return options, nil
 }

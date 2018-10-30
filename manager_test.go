@@ -11,7 +11,7 @@ import (
 func newTestManager(opts Options) (*Manager, error) {
 	mgr, err := NewManager(opts)
 	if mgr != nil {
-		mgr.config.Client.FlushDB().Result()
+		mgr.opts.client.FlushDB().Result()
 	}
 	return mgr, err
 }
@@ -22,7 +22,7 @@ func TestNewManager(t *testing.T) {
 	mgr, err := NewManager(opts)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, mgr.uuid)
-	assert.Equal(t, namespace+":", mgr.config.Namespace)
+	assert.Equal(t, namespace+":", mgr.opts.Namespace)
 }
 
 func TestManager_AddBeforeStartHooks(t *testing.T) {

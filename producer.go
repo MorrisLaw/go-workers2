@@ -15,16 +15,16 @@ const (
 )
 
 type Producer struct {
-	config config
+	opts Options
 }
 
 func NewProducer(options Options) (*Producer, error) {
-	cfg, err := configFromOptions(options)
+	options, err := processOptions(options)
 	if err != nil {
 		return nil, err
 	}
 	return &Producer{
-		config: *cfg,
+		opts: options,
 	}, nil
 }
 
@@ -86,13 +86,13 @@ func (p *Producer) EnqueueWithOptions(queue, class string, args interface{}, opt
 		return data.Jid, err
 	}
 
-	rc := p.config.Client
+	rc := p.opts.client
 
-	_, err = rc.SAdd(p.config.Namespace+"queues", queue).Result()
+	_, err = rc.SAdd(p.opts.Namespace+"queues", queue).Result()
 	if err != nil {
 		return "", err
 	}
-	queue = p.config.Namespace + "queue:" + queue
+	queue = p.opts.Namespace + "queue:" + queue
 	_, err = rc.LPush(queue, bytes).Result()
 	if err != nil {
 		return "", err
@@ -102,7 +102,7 @@ func (p *Producer) EnqueueWithOptions(queue, class string, args interface{}, opt
 }
 
 func (p *Producer) enqueueAt(at float64, bytes []byte) error {
-	_, err := p.config.Client.ZAdd(p.config.Namespace+scheduledJobsKey, redis.Z{Score: at, Member: bytes}).Result()
+	_, err := p.opts.client.ZAdd(p.opts.Namespace+scheduledJobsKey, redis.Z{Score: at, Member: bytes}).Result()
 	return err
 }
 

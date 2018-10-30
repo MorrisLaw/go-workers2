@@ -28,11 +28,11 @@ type fetch struct {
 	closed    chan bool
 }
 
-func NewFetch(queue string, cfg config) Fetcher {
+func newFetch(queue string, opts Options) Fetcher {
 	return &fetch{
-		client:    cfg.Client,
-		processID: cfg.processId,
-		queue:     cfg.Namespace + "queue:" + queue,
+		client:    opts.client,
+		processID: opts.ProcessID,
+		queue:     opts.Namespace + "queue:" + queue,
 		ready:     make(chan bool),
 		messages:  make(chan *Msg),
 		stop:      make(chan bool),

@@ -8,12 +8,12 @@ import (
 )
 
 func TestScheduled(t *testing.T) {
-	cfg, err := setupTestConfigWithNamespace("prod")
+	opts, err := setupTestOptionsWithNamespace("prod")
 	assert.NoError(t, err)
-	mgr := &Manager{config: *cfg}
-	scheduled := newScheduledWorker(*cfg)
+	mgr := &Manager{opts: opts}
+	scheduled := newScheduledWorker(opts)
 
-	rc := cfg.Client
+	rc := opts.client
 
 	now := nowToSecondsWithNanoPrecision()
 
